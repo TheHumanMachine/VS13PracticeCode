@@ -10,8 +10,7 @@ using namespace std;
 
 int main()
 {
-	GameSystem gameSystem("levels.txt");
-
+	GameSystem gameSystem("level1.txt");
 	gameSystem.playGame();
 
 

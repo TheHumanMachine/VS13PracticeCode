@@ -2,13 +2,23 @@
 #include <fstream>
 #include <iostream>
 #include <cstdio>
+#include <random>
 
 Level::Level()
 { 
 
 }
 
-void Level::load(string fileName, Player &player)
+Level::~Level()
+{
+	for (int i = 0; i < NUM_ARMIES; i++){
+		for (int j = 0; j < _armies[i].size(); j++){
+			delete _armies[i][j];
+		}
+	}
+}
+
+void Level::load(string fileName)
 {
 	ifstream file;
 
@@ -22,6 +32,8 @@ void Level::load(string fileName, Player &player)
 
 	while (getline(file, line)){
 		_levelData.push_back(line);
+		_soldierGrid.push_back(vector<Soldier *>());
+		_soldierGrid.back().resize(line.size(), nullptr);
 	}
 	file.close();
 	
@@ -29,37 +41,45 @@ void Level::load(string fileName, Player &player)
 
 	char tile;
 	for (size_t i = 0; i < _levelData.size(); i++){
-		for (size_t j = 0; j < _levelData.size(); j++){
+		for (size_t j = 0; j < _levelData[i].size(); j++){
 			tile = _levelData[i][j];
 
 			switch (tile){
-			case '@': //Player
-				player.setPosition(j, i);
+			case '1': //team 1
+				_armies[0].push_back(new Soldier("1", tile, 1, 10, 5, 10, 0));
+				_armies[0].back()->setPosition(j, i);
+				_soldierGrid[i][j] = _armies[0].back();
 				break;
-			case 'S': //Snake
-				_enemies.push_back(Enemy("Snake", tile, 1, 3, 2, 10, 50));
-				_enemies.back().setPosition(j, i);
+			case '2': //team 2
+				_armies[1].push_back(new Soldier("2", tile, 1, 10, 5, 10, 1));
+				_armies[1].back()->setPosition(j, i);
+				_soldierGrid[i][j] = _armies[1].back();
 				break;
-			case 'G': //Goblin
-				_enemies.push_back(Enemy("Goblin", tile, 1, 3, 2, 50, 100));
-				_enemies.back().setPosition(j, i);
+			case '#':
+			case '.':
 				break;
-			case 'O': //Ogre - Works
-				_enemies.push_back(Enemy("Ogre", tile, 1, 3, 2, 75, 150));
-				_enemies.back().setPosition(j, i);
-				break;
-			case 'B': //Bandit
-				_enemies.push_back(Enemy("Bandit", tile, 4, 3, 2, 50, 150));
-				_enemies.back().setPosition(j, i);
-				break;
-			case 'D': //Dragon
-				_enemies.push_back(Enemy("Dragon", tile, 4, 3, 2, 100, 500));
-				_enemies.back().setPosition(j, i);
+			default:
+				printf("WARNING: UNKNOW TILE %C at %d, %d", tile, j, i);
+				system("PAUSE");
 				break;
 			}
 		}
 	}
+	random_device::result_type seed = std::random_device()();
+	mt19937 randomEngine(seed);
+	Soldier *tmp;
 
+	//shuffle army
+	for (int i = 0; i < NUM_ARMIES; i++){
+		//iterate backwards through vector
+		for (int j = _armies[i].size() - 1; j > 1; j--){
+			uniform_int_distribution<int> randomSwap(0, j - 1);
+			int swap = randomSwap(randomEngine);
+			tmp = _armies[i][j];
+			_armies[i][j] = _armies[i][swap];
+			_armies[i][swap] = tmp;
+		}
+	}
 
 }
 
@@ -73,63 +93,25 @@ void Level::print()
 	printf("\n");
 }
 
-void Level::movePlayer(char input, Player &player)
+
+void Level::update()
 {
-	int playerX, playerY;
-
-	player.getPosition(playerX, playerY);
-
-	switch (input){
-	case 'W': //up
-	case 'w':
-		processPlayerMove(player, playerX, playerY - 1);
-		break;
-	case 'S': //down
-	case 's':
-		processPlayerMove(player, playerX, playerY + 1);
-		break;
-	case 'A': //left
-	case 'a':
-		processPlayerMove(player, playerX - 1, playerY);
-		break;
-	case 'D': //right
-	case 'd':
-		processPlayerMove(player, playerX + 1, playerY);
-		break;
-	default:
-		cout << "Invalid input";
-		system("PAUSE");
-		break;
-	}
-}
-
-void Level::updateEnemies(Player &player)
-{
-	char aiMove;
-	int playerX, playerY, enemyX, enemyY;
-
-
-	
-	player.getPosition(playerX, playerY);
-
-	for (size_t i = 0; i < _enemies.size(); i++){
-		aiMove = _enemies[i].getMove(playerX, playerY);
-		_enemies[i].getPosition(enemyX, enemyY);
-
-		switch (aiMove){
-		case 'w'://up
-			processEnemyMove(player, i, enemyX, enemyY - 1);
-			break;
-		case 's': //down
-			processEnemyMove(player, i, enemyX, enemyY + 1);
-			break;
-		case 'a': //left
-			processEnemyMove(player, i, enemyX - 1, enemyY);
-			break;
-		case 'd':  //right
-			processEnemyMove(player, i, enemyX + 1, enemyY);
-			break;
+	char move;
+	int i = 0;
+	bool isDone = false;
+	//Loops until done
+	while (isDone == false)
+	{
+		isDone = true;
+		//loops through all armies
+		for (int j = 0; j < NUM_ARMIES; j++){
+			if (i < _armies[j].size()){
+				move = _armies[j][i]->getMove(_armies, NUM_ARMIES);
+				processSoldierMove(move, _armies[j][i]);
+				isDone = false;
+			}
 		}
+		i++;
 	}
 }
 
@@ -139,113 +121,95 @@ char Level::getTile(int x, int y)
 	
 }
 
-void Level::setTile(int x, int y, char tile)
+Soldier *Level::getSoldier(int x, int y)
+{
+	return _soldierGrid[y][x];
+}
+
+void Level::setTile(int x, int y, char tile, Soldier *soldier)
 {
 	_levelData[y][x] = tile; 
+	_soldierGrid[y][x] = soldier;
 }
 
-void Level::processPlayerMove(Player &player, int targetX, int targetY)
+void Level::processSoldierMove(char direction, Soldier *soldier)
 {
-	int playerX, playerY;
-	player.getPosition(playerX, playerY);
+	int x, y, targetX, targetY;
 
-	char moveTile = getTile(targetX, targetY);
-	
-	switch (moveTile){
-	case '.':
-		player.setPosition(targetX, targetY);
-		setTile(playerX, playerY, '.');
-		setTile(targetX, targetY, '@');
+	soldier->getPosition(x, y);
+
+	switch (direction){
+	case 'w': //up
+		targetX = x;
+		targetY = y - 1;
 		break;
+	case 'a': //left
+		targetX = x - 1;
+		targetY = y;
+		break;
+	case 's': //down
+		targetX = x;
+		targetY = y + 1;
+		break;
+	case 'd': //right
+		targetX = x + 1;
+		targetY = y;
+		break;
+	case '.':
+		return;
+	}
+	char targetTile = getTile(targetX, targetY);
+
+	switch (targetTile){
 	case '#':
 		break;
-	default:
-		battleMonster(player, targetX, targetY);
-		break;
-
-
-	}
-}
-
-void Level::processEnemyMove(Player &player, int enemyIndex, int targetX, int targetY)
-{
-	int playerX, playerY, enemyX, enemyY;
-
-
-	_enemies[enemyIndex].getPosition(enemyX, enemyY);
-	player.getPosition(playerX, playerY);
-
-	char moveTile = getTile(targetX, targetY);
-
-	switch (moveTile){
 	case '.':
-		_enemies[enemyIndex].setPosition(targetX, targetY);
-		setTile(enemyX, enemyY, '.'); 
-		setTile(targetX, targetY, _enemies[enemyIndex].getTile());
-		break;
-	case '@':
-		battleMonster(player, enemyX, enemyY);
+		moveSoldier(soldier, targetX, targetY);
 		break;
 	default:
-		battleMonster(player, targetX, targetY);
+		battle(soldier, targetX, targetY);
 		break;
 	}
 }
 
-
-void Level::battleMonster(Player &player, int targetX, int targetY)
+void Level::battle(Soldier *soldier, int targetX, int targetY)
 {
-	int enemyX, enemyY, playerX, playerY, attackRoll, attackResult;
-	string enemyName;
+	int x, y, enemyArmy;
+	soldier->getPosition(x, y);
+	Soldier *targetSoldier = getSoldier(targetX, targetY);
+	if (targetSoldier == nullptr){
+		return;
+	}
+	enemyArmy = targetSoldier->getArmy();
+	if (enemyArmy == soldier->getArmy()){
+		return;
+	}
+	int result = targetSoldier->takeDamage(soldier->attack());
+	if (result == 1){
+		for (int i = 0; i < _armies[enemyArmy].size(); i++){
+			if (_armies[enemyArmy][i] == targetSoldier){
+				_armies[enemyArmy][i] = _armies[enemyArmy].back();
+				_armies[enemyArmy].pop_back();
 
+				delete targetSoldier;
 
-	player.getPosition(playerX, playerY);
-
-	for (size_t i = 0; i < _enemies.size(); i++){
-
-		_enemies[i].getPosition(enemyX, enemyY);
-
-		enemyName = _enemies[i].getName(); 
-
-		if (targetX == enemyX && targetY == enemyY){
-
-			//Battle!
-			attackRoll = player.attack();
-			printf("\nPlayer attacked %s with a roll of %d\n", enemyName.c_str(), attackRoll);
-			attackResult = _enemies[i].takeDamage(attackRoll);
-
-			if (attackResult != 0){
-
-				setTile(targetX, targetY, '.');
-				print();
-				printf("Monster died\n");
-
-				_enemies[i] = _enemies.back();
-				_enemies.pop_back();
-				i--;
-
-				system("PAUSE");
-				player.addExperience(attackResult);
-
-				return;
+				setTile(targetX, targetY, '.', nullptr);
+				break;
 			}
-			//Monster's turn
-			attackRoll = _enemies[i].attack();
-			printf("\n%s attacked player with a roll of %d\n", enemyName.c_str(), attackRoll);
-
-			attackResult = player.takeDamage(attackRoll);
-
-			if (attackResult != 0){
-
-				setTile(playerX, playerY, 'x');
-				print();
-				printf("You've Died!\n");
-				system("PAUSE");
-
-				exit(0);
-			}
-			system("PAUSE");
-			return;
 		}
 	}
+
+
+}
+
+void Level::moveSoldier(Soldier *soldier, int targetX, int targetY)
+{
+	int x, y;
+	soldier->getPosition(x, y);
+
+	setTile(x, y, '.', nullptr);
+	setTile(targetX, targetY, soldier->getTile(), soldier);
+
+	soldier->setPosition(targetX, targetY);
+
 }

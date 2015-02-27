@@ -1,6 +1,5 @@
 #pragma once
 #include <string>
-#include "Player.h"
 #include "Level.h"
 
 
@@ -10,14 +9,11 @@ class GameSystem
 {
 public:
 	GameSystem(string levelFileName);
-	
 	void playGame();
-	void playerMove();
-
 
 private:
 	Level _level;
-	Player _player;
+
 	
 };
 

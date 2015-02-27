@@ -1,37 +1,39 @@
 #pragma once
 #include <vector>
 #include <string>
-#include "Player.h"
-#include "Enemy.h"
+#include "Soldier.h"
 
 using namespace std;
+
+const int NUM_ARMIES = 2;
 
 
 class Level
 {
 public:
 	Level();
+	~Level();
 
-	void load(string fileName, Player &player);
+	void load(string fileName);
 	void print();
 
-	void movePlayer(char input, Player &player);
-	void updateEnemies(Player &player);
+	void update();
 
 	//Getters
 	char getTile(int x, int y);
+	Soldier *getSoldier(int x, int y);
 
 	//Setters
-	void setTile(int x, int y, char tile);
+	void setTile(int x, int y, char tile, Soldier *soldier);
 
 private:
-	void processPlayerMove(Player &player, int targetX, int targetY); 
-	void processEnemyMove(Player &player, int enemyIndex, int targetX, int targetY);
-	void battleMonster(Player &player, int targetX, int targetY);
+	void processSoldierMove(char direction, Soldier *soldier);
+	void battle(Soldier *soldier, int targetX, int targetY);
+	void moveSoldier(Soldier *soldier, int targetX, int targetY);
 
-private:
 	vector <string> _levelData;
-	vector <Enemy> _enemies; 
+	vector < vector<Soldier*> > _soldierGrid;
+	vector <Soldier *> _armies[NUM_ARMIES]; 
 
 };
 

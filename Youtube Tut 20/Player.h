@@ -12,6 +12,7 @@ public:
 	void addExperience(int experience);
 	//Getters
 	void getPosition(int &x, int &y);
+	int displayLevel(){ return _level; }
 	
 
 private:

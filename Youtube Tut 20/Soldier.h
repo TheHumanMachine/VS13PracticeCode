@@ -1,13 +1,13 @@
 #pragma once
 #include <string>
-
+#include <vector>
 
 using namespace std;
 
-class Enemy
+class Soldier
 {
 public:
-	Enemy(string name, char tile, int level, int attack, int defense, int health, int experienceValue);
+	Soldier(string name, char tile, int level, int attack, int defense, int health, int army);
 	
 	//Setter
 	void setPosition(int x, int y);
@@ -15,14 +15,17 @@ public:
 	void getPosition(int &x, int &y);
 	string getName() { return _name; }
 	char getTile(){ return _tile; } 
+	int getArmy(){ return _army; }
 
 	int attack();
 	int takeDamage(int attack);
 
 	//Gets AI move command
-	char getMove(int playerX, int playerY);
+	char getMove(vector<Soldier *> armies[], int numArmies);
 
 private:
+	Soldier *getClosestEnemy(vector<Soldier *> armies[], int numArmies);
+
 	string _name;
 	char _tile;
 
@@ -31,7 +34,7 @@ private:
 	int _attack;
 	int _defense;
 	int _health;
-	int _experienceValue;
+	int _army;
 
 	//positions
 	int _x;
